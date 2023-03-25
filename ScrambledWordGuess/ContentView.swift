@@ -33,11 +33,26 @@ struct ContentView: View {
     
     @State var barHidden = false
     
+    @State private var timeRemaining: Double = 30
+    
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    @Environment(\.scenePhase) var scenePhase
+    
+    @State var endText = ""
+    
+    @State private var isActive = false
+    
     var body: some View {
         VStack {
             Text(currentWord)
                 .opacity(answerOpacity)
+            Text(endText)
+                .multilineTextAlignment(.center)
             if !hideGame {
+                Text("Time Remaining\n\(Int(timeRemaining))s")
+                    .font(.title2)
+                    .multilineTextAlignment(.center)
                 Spacer()
                 Text(word)
                 Text(String(correct))
@@ -85,6 +100,7 @@ struct ContentView: View {
                     started = true
                     filterData()
                     word = genNewWord()
+                    isActive = true
                     hideGame.toggle()
                     print("Started")
                 }) {
@@ -139,9 +155,7 @@ struct ContentView: View {
                         }
                         .padding(.horizontal)
                         Button(action: {
-                            started = false
-                            correct = 0
-                            hideGame = true
+                            endGame(endCause: "button")
                         }) {
                             Text("End Game")
                         }
@@ -157,6 +171,22 @@ struct ContentView: View {
         }
         .padding()
         .background(Color(red: 0.11764705882352941, green: 0.11764705882352941, blue: 0.1803921568627451))
+        .onReceive(timer) { time in
+            guard isActive else { return }
+
+            if timeRemaining > 0 {
+                timeRemaining -= 1
+            } else {
+                endGame(endCause: "timeout")
+            }
+        }
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active {
+                isActive = true
+            } else {
+                isActive = false
+            }
+        }
     }
     
     func startCountdown () {
@@ -167,17 +197,42 @@ struct ContentView: View {
         }
     }
     
+    func endGame(endCause: String)
+    {
+        if(endCause == "timeout") {
+            if(correct > 2) {
+                endText = "Good Job!\nYou got \(correct) right!"
+            } else {
+                endText = "Better luck next time.\nYou got \(correct) right."
+            }
+            
+            started = false
+            correct = 0
+            hideGame = true
+            isActive = false
+            timeRemaining = 30
+        } else {
+            started = false
+            correct = 0
+            hideGame = true
+            isActive = false
+            timeRemaining = 30
+        }
+        
+    }
     func checkIfRight () {
         if (name.lowercased() == currentWord.lowercased()) {
             print("Correct")
             correct = correct + 1
             name = ""
+            timeRemaining = timeRemaining + (letters * 1.25)
             filterData()
             word = genNewWord()
         };
     }
     
     func genNewWord () -> String {
+        endText = ""
         let str = filteredWords.randomElement();
         let word = str?.split(separator: "")
         let scrambledword = scrambleArray(word!)
@@ -217,19 +272,6 @@ struct ContentView: View {
 
         // Return the extracted column data
         return columnData
-    }
-    
-    func countDownString(from date: Date, until nowDate: Date) -> String {
-            let calendar = Calendar(identifier: .gregorian)
-            let components = calendar
-                .dateComponents([.day, .hour, .minute, .second]
-                    ,from: nowDate,
-                     to: date)
-            return String(format: "%02dd:%02dh:%02d:%02ds",
-                          components.day ?? 00,
-                          components.hour ?? 00,
-                          components.minute ?? 00,
-                          components.second ?? 00)
     }
     
     func filterData() {
