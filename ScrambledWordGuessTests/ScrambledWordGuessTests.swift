@@ -2,7 +2,7 @@
 //  ScrambledWordGuessTests.swift
 //  ScrambledWordGuessTests
 //
-//  Created by Christian Izak on 3/18/23.
+//  Created by FluffyDoesStuff on 3/18/23.
 //
 
 import XCTest
